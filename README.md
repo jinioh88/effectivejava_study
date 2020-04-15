@@ -77,3 +77,67 @@
 - 빌더 생성 비용이 크지는 않지만 성능에 민감한 상황에선 문제가 될 수 있다. 
 - 매개 변수가 4개 이상은 되어야 값어치를 한다. 
   - API는 시간이 지날수록 매개변수가 많아지는 경향이 있음을 명심
+
+---
+## private 생성자나 열거 타입으로 싱글턴임을 보증하라
+- 싱글턴이란 인스턴스를 오직 하나만 생성할 수 있는 클래스를 말한다. 
+- 클래스를 싱글턴으로 만들면 이를 사용하는 클라이언트를 테스트하기 어려워질 수 있다. 
+- 싱글턴을 만드는 방식은 보통 둘 중 하나다.
+  - 두 방식 모두 생성자는 private로 감춰두고, 유일한 인스턴스에 접근할 수 있는 수단으로 public static 멤버를 하나 마련해둔다.
+  - public static final 필드 방식의 싱글턴
+    ```
+    public class Elvis {
+        public static final Elvis INSTANCE = new Elvis();
+    
+        public Elvis() {
+        }
+        
+        public void leaveTheBuilding() {
+            System.out.println("leave");
+        }
+    }
+    ``` 
+    - private 생성자는 public static final 필드인 Elvis.INSTANCE를 초기화할 때 딱 한번만 호출한다. 
+      - 리플렉션으로 우회하는 방법이 있는데, 이러한 공격을 방어하려면 생성자를 수정하여 두 번째 객체가 생성되려 할 때 예외를 던지면 된다. 
+    - 해당 클래스가 싱글턴임이 API에 명백히 드러난다. 
+    - 간결하다.
+  - 두번째 방법은 정적 팩터리 메서드를 public static 멤버로 제공하면 된다.
+    ```
+    public class Elvis {
+        private static final Elvis INSTANCE = new Elvis();
+    
+        public Elvis() {
+        }
+        
+        public static Elvis getInstance() {
+            return INSTANCE;
+        }
+    
+        public void leaveTheBuilding() {
+            System.out.println("leave");
+        }
+    }
+    ```
+    - API를 바꾸지 않고도 싱글턴이 아니게 변경할 수 잇다. 
+    - 원하면 정적 팩터리를 제네릭 싱글턴 팩터리로 만들 수 있다. 
+    - 정적 팩터리의 메서드 참조를 공급자로 사용할 수 있다. 
+    - 위 의 장점들으 필요하지 않는다면 public 필드 방식이 더 좋다.
+  - 싱글턴 클래스를 직렬화하려면 단순히 Serializable을 구현함을 넘어 모든 인스턴스 필드를 일시적이라고 선언하고 readResolve 메서드를 제공해야 한다. 
+    - 이렇게 안하면 역직렬화할 때마다 새로운 인스턴스가 만들어진다. 
+    ```
+    private Object readResolve() {
+            return INSTANCE;
+    }
+    ```
+- 조금 부자연스러워 보일 순 있으나 대부분 상황에서 원소가 하나뿐인 열거타입이 싱글턴을 만드는 가장 좋은 방법이다. 
+  - 단 말들려는 싱글턴이 Enum 외의 클래스를 상속해야 한다면 사용할 수 없다. 
+  ```
+  public enum Elvis {
+      INSTANCE;
+  
+      public void leaveTheBuilding() {
+          System.out.println("leave..");
+      }
+  }
+  ```
+    
