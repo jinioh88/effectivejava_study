@@ -158,3 +158,61 @@
   ```
   - 이 방식은 상속을 불가능하게 하는 효과도 있다. 
   - 모든 생성자는 상위 클래스의 생성자를 호출하게 되는데 이를 private로 선언해서 하위 클래스가 상위 클래스의 생성자에 접근할 길이 없어진다. 
+  
+---
+## 자원을 직접 명시하지 말고 의존 객체 주입을 사용하라
+- 많은 클래스스가 하나 이상의 자원에 의존한다. 
+```
+// 정적 유틸리티를 잘못 사용한 예
+public class SpellChecker {
+    private static final Lexicon dictionary = new Lexicon();
+    
+    private SpellChecker() {}
+    
+    public static boolean isValid(String word) {
+        return true;
+    }
+}
+```
+
+```
+// 싱글턴을 잘못 사용한 예
+public class SpellChecker {
+    private final Lexicon dictionary = new Lexicon();
+    
+    private SpellChecker(...) {}
+    
+    public static SpellChecker INSTANCE = new SpellChecker();
+    
+    public static boolean isValid(String word) {
+        return true;
+    }
+}
+```
+
+- 위 두 방식 모두 사전을 단 하나만 사용한다고 가정한다는 점에서 훌륭하지 않다.
+  - 실전에선 여러 사전이 있을 텐데 사전 하나로 이 모든 쓰임에 대응할 수 있기를 바라는건 순진한 생각이다. 
+- 필드에서 final 한정자를 제거하고 다른 사전으로 교체하는 메서드를 추가할 수 있지만, 아쉽게도 어색하고 오류를 내기쉬우며 멀티스레드 환경에서 쓸 수 업다. 
+  - 사용하는 자원에 따라 동작이 달라지는 클래스에는 정적 유틸리티 클래스나 싱글턴 방식이 적합하지 않다.
+- 인스턴스를 생성할 때 생성자에 필요한 자원을 넘겨주는 방식을 사용하면 된다.(의존 객체 주입의 한 형태)
+  ```
+  public class SpellChecker {
+      private final Lexicon dictionary;
+      
+      private SpellChecker(Lexicon dictionary) {
+          this.dictionary = Objects.requireNonNull(dictionary);
+      }
+      
+      public static boolean isValid(String word) {
+          return true;
+      }
+  }
+  ```
+- 위 예제는 dictionary라는 딱 하나의 자원만 사용하지만, 자원이 몇 개든 의존 관계가 어떻든 상관없이 잘 동작한다.
+- 불변도 보장하여 여러 클라이언트가 의존 객체들을 안심하고 공유할 수 있기도 하다. 
+- 의존객체 주입은 생성자, 정적 팩터리, 빌더 모두에 똑같이 응용할 수 있다.
+- 이 패턴의 쓸만한 변형은 팩터리 메서드 패턴을 구현하는 것이다. 
+- 클래스가 내부적으로 하나 이상의 자원에 의존하고, 그 자원이 클래스 동작에 영향을 준다면 싱글턴과 정저 유틸리티 클래스는 사용하지 않는게 좋다.
+  - 이 자원들을 클래스가 직접 만들게 해서도안된다.
+
+  
