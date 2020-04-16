@@ -267,3 +267,75 @@ public class SpellChecker {
   - 일반적으론 자체 객체 풀은 코드를 헛갈리게 만들고 메모리 사용량을 늘리고 성능을 떨어뜨린다. 
   - 최근 JVM의 가비지 컬렉터는 상당히 잘 최적화가 잘되있어 가벼운 객체용을 다룰 땐 직접 만든 객체 풀보다 훨씬 빠르다. 
   
+--- 
+## 다 쓴 객체 참조를 해제하라
+- 자바는 가비지 컬렉터가 알아서 다 쓴 객체를 회수해간다. 
+- 이래서 메모리 관리에 신경 쓰지 않아도 된다고 오해할 수 있는데, 절대 사실이 아니다. 
+  ```
+  public class Stack {
+      private Object[] elements;
+      private int size = 0;
+      private static final int DEFAULT_INITAL_CAPACITY = 16;
+  
+  
+      public Stack() {
+          elements = new Object[DEFAULT_INITAL_CAPACITY];
+      }
+  
+      public void push(Object e) {
+          ensureCapacity();
+          elements[size++] = e;
+      }
+  
+      public Object pop() {
+          if(size == 0) {
+              throw new EmptyStackException();
+          }
+          return elements[--size];
+      }
+  
+      private void ensureCapacity() {
+          if(elements.length == size) {
+              elements = Arrays.copyOf(elements, 2 * size +1);
+          }
+      }
+  }
+  ```
+  - 위 코드의 문제는 메모리 누수로 이 스택을 사용하는 프로그램을 오래 실행하다 보면 점차 가비지 컬렉션 활동과 메모리 사용량이 늘어나 성능이 저하된다. 
+  - 위 코드의 문제는 스택이 커졌다가 줄어들 때 스택에서 꺼내진 객체들을 가비지 컬렉터가 회수하지 않는다. 
+    - 이 스택이 그 객체들의 다 쓴 참조를 여전히 가지고 있기 때문이다. 
+    - elements 배열의 활성 영역 밖의 참조들이 모두 다쓴 첨조에 속한다. 
+  - 객체 참조 하나를 살려두면 가비지 컬렉터는 그 객체뿐 아니라 그 객체가 참조하는 모든 객체를 회수해가지 못한다. 
+  - 해법은 다 쓴 참조를 null 처리하면 된다.
+      ```
+      public Object pop() {
+              if(size == 0) {
+                  throw new EmptyStackException();
+              }
+              Object result = elements[--size];
+              elements[size] = null;
+              
+              return result;
+      }
+      ``` 
+  - 그렇다고 모든 객체를 쓰자마자 null 처리하는건 바람직하지 않다.
+  - 다 쓴 참조를 해제하는 가장 좋은 방법은 그 참조를 담은 변수를 유효 범위 밖으로 밀어내는 것이다. 
+- 캐시 역시 메모리 누수를 일으키는 주범이다. 
+  - 객체 참조를 캐시에 넣고 다 쓴 뒤에도 그냥 놔둘 경우이다.
+- 메모리 누수의 세 번째 주범은 바로 리스너 혹은 콜백이라 부르는 것이다. 
+  - 클라이언트가 콜백을 등록만 하고 명확히 해지하지 않는다면 뭔가 조치해주지 않는 한 콜백은 계속 쌓일 것이다. 
+  - 이럴 때 콜백을 약한 참조로 저장하면 가비지 컬렉터가 즉시 수거해간다. 
+  
+--- 
+## finalizer와 cleaner 사용을 피하라
+- 자바는 두 가지 객체 소멸자를 제공한다.
+- finalizer는 예측할 수 없고, 상황에 따라 위험할 수 있어 일반적으로 불필요하다. 
+- 자바 9에서는 finalizer의 대안으로 cleaner를 소개했다. 
+  - finalizer보단 덜 위험하지만, 여전히 예측할 수 없고, 느리고, 일반적으로 불필요하다. 
+- finalizer와 cleaner는 즉시 수행된다는 보장이 없다. 
+- 이 둘의 대안책은 AutoCloseable을 구현해주고, 클라이언트에서 인스턴스를 다 쓰고 나면 close 메서드를 호출하면 된다. 
+  - 각 인스턴스는 자신이 닫혔는지 추적하는 것이 좋다. 
+  - 즉, close 메서드에서 이 객체는 더 이상 유효하지 않음을 필드에 기록하고, 다른 메서드는 이 필드를 검사해 객체가 닫힌 후에 불렸다면 IllegalStateExceptoin을 던지는 것이다.
+  - 자바 라이브러리의 일부 클래스는 안정망 역할의 filnalize를 제공하는데, FileInputStream, FileOutputStream, ThreadPoolExecutor가 대표적이다.
+- 
+  
