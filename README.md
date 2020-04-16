@@ -337,5 +337,36 @@ public class SpellChecker {
   - 각 인스턴스는 자신이 닫혔는지 추적하는 것이 좋다. 
   - 즉, close 메서드에서 이 객체는 더 이상 유효하지 않음을 필드에 기록하고, 다른 메서드는 이 필드를 검사해 객체가 닫힌 후에 불렸다면 IllegalStateExceptoin을 던지는 것이다.
   - 자바 라이브러리의 일부 클래스는 안정망 역할의 filnalize를 제공하는데, FileInputStream, FileOutputStream, ThreadPoolExecutor가 대표적이다.
-- 
-  
+
+---
+## try-finally보다는 try-with-resource를 사용하라
+- 자바 라이브러리에는 close 메서드를 호출해 직접 닫아줘야 하는 자원이 많다. 
+- 자원 닫기는 클라이언트가 놓치기 쉬워 예측할 수 없는 성능 문제로 이어지기도 한다. 
+- 전통적인 방법으로 try-finally가 쓰였다. 
+  ```
+  static String firstLineofFile(String path) throws IOException {
+          BufferedReader br = new BufferedReader(new FileReader(path));
+          try {
+              return br.readLine();
+          } finally {
+              br.close();
+          }
+  }
+  ```
+- 자바 7에선 try-with-resouces가 나왔다.
+  - 이 구조를 사용하려면 해당 자원이 AutoCloseable 인터페이스를 구현해야 한다. 
+  ```
+  static void copy(String src, String dst) throws IOException {
+          try(InputStream in = new FileInputStream(src);
+              OutputStream out = new FileOutputStream(dst)) {
+              byte[] buf = new byte[1024];
+              int n;
+              while((n = in.read(buf)) >= 0) {
+                  out.write(buf, 0, n);
+              }
+          }
+   }
+  ```
+  - try-with-resouces 버전이 짧고 읽기 수월하고 문제를 진단하기도 훨씬 좋다. 
+  - firstLineofFile이 함수에선 readLine과 close 호출 양쪽에서 예외가 발생하면, close에서 발생한 예외는 숨겨지고 readLine에서 발생한 예외가 기록된다. 
+  - try-with-resources에도 catch 절을 쓸 수 있다. 
