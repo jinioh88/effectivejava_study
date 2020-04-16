@@ -106,7 +106,7 @@
     public class Elvis {
         private static final Elvis INSTANCE = new Elvis();
     
-        public Elvis() {
+        private Elvis() {
         }
         
         public static Elvis getInstance() {
