@@ -371,6 +371,7 @@ public class SpellChecker {
   - firstLineofFile이 함수에선 readLine과 close 호출 양쪽에서 예외가 발생하면, close에서 발생한 예외는 숨겨지고 readLine에서 발생한 예외가 기록된다. 
   - try-with-resources에도 catch 절을 쓸 수 있다. 
 
+</br>
 # 모든 객체의 공통 메서드
 Object의 구현해야 하는 메서드를 알아보는 챕터다.</br>
 
@@ -450,4 +451,11 @@ Object의 구현해야 하는 메서드를 알아보는 챕터다.</br>
 - 좋은 해시 함수라면 서로 다른 인스턴스에 다른 해시코드를 반환한다. 
 - 성능을 높인다고 해시코드를 계산할 때 핵심 필드를 생략해선 안된다.
 
-  
+---
+## toString을 항상 재정의하라
+- Object의 기본 toString은 '클래스이름@16진수해시코드'를 반호나한다. 
+- toString의 일반 규약은 간결하면서 사람이 읽기 쉬운 형태의 유익한 정보를 반환해야한다. 
+- toString 메서드는 객체를 println, printf, 문자열 연결연산(+), assert 구문에 넘길 때, 혹은 디버거가 객체를 출력할 때 자동으로 불린다.
+- 실전에서 toString은 그 객체가 가진 주요 정보 모두를 반환하는 게 좋다. 
+- 정적 유틸리티 클래스는 toString을 제공할 이유가 없다. 
+- IDE에서 자동완성 toString은 유용하다.   
