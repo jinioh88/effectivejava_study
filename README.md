@@ -370,3 +370,84 @@ public class SpellChecker {
   - try-with-resouces 버전이 짧고 읽기 수월하고 문제를 진단하기도 훨씬 좋다. 
   - firstLineofFile이 함수에선 readLine과 close 호출 양쪽에서 예외가 발생하면, close에서 발생한 예외는 숨겨지고 readLine에서 발생한 예외가 기록된다. 
   - try-with-resources에도 catch 절을 쓸 수 있다. 
+
+# 모든 객체의 공통 메서드
+Object의 구현해야 하는 메서드를 알아보는 챕터다.</br>
+
+## equals는 일반 규약을 지켜 재정의하라
+- equals는 다음에 열거한 상황 중 하나에 해당한다면 재정의하지 않는게 최선이다.
+  - 각 인스턴스가 본질적으로 고유하다
+    -값을 표현하는 게 아니라 동작하는 개체를 표현하는 클래스가 여기 해당한다.
+    - Thread가 좋은 예이다.
+  - 인스턴스의 '논리적 동치성'을 검사할 일이 없다.
+    - 검사할 일이 없다면 Object의 기본 equals 만으로 충분하다.
+  - 상위 클래스에서 재정의한 equals가 하위 클래스에도 딱 들어맞는다.
+  - 클래스가 private이거나 package-private이고 equals 메서드를 호출할 일이 없다.
+    - 혹시 몰라 호출 되는 걸 막고 싶다면 다음 방법을 쓰면 된다. 
+    ```
+    @Override
+    public boolean equals(Object o) {
+      throw new AssertionError(); // 호출금지
+    }
+    ```
+- equals 재정의해야 할 때는 언제인가?
+  - 객체 식별성(두 객체가 물리적으로 같은지)이 아니라 논리적 동치성을 확인해야 하는데, 상위 클래스의 equals가 논리적 동치성을 비교하도록 재정의되지 않았을 때다.
+  - 주로 값 클래스들이 여기 해당한다. 즉 객체가 같은지가 아니라 값이 같은지를 알고 싶어하는 것이다.
+  - 값 클래스라 해도, 값이 같은 인스턴스가 둘 이상 만들어지지 않음을 보장하는 인스턴스 통제 클래스라면 equals를 재정의 안해도 된다.
+- equals 규약을 어기면 그 객체를 사용하는 다른 객체들이 어떻게 반응할지 알 수 없다. 규약은 다음과 같다
+  - 반사성
+  - 대칭성
+  - 추이성
+  - 일관성
+  - null이 아님
+- 구체 클래스를 확장해 새로운 값을 추가하면서 equals 규약을 만족시킬 방법은 존재하지 않는다. 
+  - 괜찮은 우회 방법으로 상속 대신 컴포지션을 사용하는 조언을 따르면 된다. 
+  - 단 추상 클래스의 하위 클래스에서라면 equals 규약을 지키면서 값을 추가할 수 있다. 
+    ```
+    public class ColorPoint {
+        private final Point point;
+        private final Color color;
+        
+        public ColorPoint(int x, int y, Color color) {
+            point = new Point(x, y);
+            this.color = Objects.requireNonNull(color);
+        }
+    
+    
+        @Override
+        public boolean equals(Object o) {
+            if(!(o instanceof ColorPoint))
+                return false;
+    
+            ColorPoint cp = (ColorPoint) o;
+            
+            return cp.point.equals(point) && cp.color.equals(color);
+        }
+    }
+    ```
+- 클래스가 불변이든 가변이든 equals의 판단에 신뢰할 수 없는 자원이 끼어들게 해선 안된다. 
+  - 위 조건을 어기면 일관성이 깨진다.
+- 양질의 equals 메서드를 구현 방법 단계는 다음과 같다.
+  - == 연산자를 사용해 입력이 자기 자신의 참조인지 확인한다. 
+    - 단순한 성능 최적화용으로, 비교 작업이 복잡한 상황일 때 값어치를 한다. 
+  - instanceof 연산자로 입력이 올바른지 확인한다. 
+  - 입력을 올바른 타입으로 형변환한다.
+  - 입력 객체와 자기 자신의 대응되는 '핵심' 필드들이 모두 일치하는지 하나씩 검사한다. 
+- float와 double을 제외한 기본 타입 필드는 == 연산자로 비교하고, 참조 타입은 equals 메서드로, float와 double은 각각 정적 메서드 Float.compare(), Double.compare()로 비교한다. 
+  - Float.compare(), Double.compare()는 오토박싱을 수반할 수 있으니 성능상 좋지 않다. 
+- 배열 필드는 원소 각각을 앞선 지침대로 비교하고, 배열의 모든 원소가 핵심 필드라면 Arrays.equals 메서드들 중 하나를 사용하자.
+- 어떤 필드를 먼저 비교하느냐가 equals의 성능을 좌우한다. 
+- equals를 다 구현했다면 세 가지만 자문해보자. 
+  - 대칭적인가? 추이성이 있는가? 일관적인가?
+- 요즘 IDE에서 자동으로 작성해주니 직접하기보다 IDE에 맡기는 편이 낫다.
+
+---
+## equals를 재정의하려거든 hashCode도 재정의하라
+- equals를 재정의한 클래스 모두에서 hashCode도 재정의해야 한다. 
+- 그렇지 않으면 hashCode 일반 규약을 어기게 되어 해당 클래스의 인스턴스를 HashMap이나 HashSet 같은 컬렉션의 원소로 사용할 때 문제를 일으킨다.
+- 논리적으로 같은 객체는 같은 해시코드를 반환해야 한다. 
+- 논리적으로 같은 두 객체일 지라도 Object의 기본 hashCode 메서드를 사용하면 이 둘이 전혀 다르다고 판단한다. 
+- 좋은 해시 함수라면 서로 다른 인스턴스에 다른 해시코드를 반환한다. 
+- 성능을 높인다고 해시코드를 계산할 때 핵심 필드를 생략해선 안된다.
+
+  
