@@ -1,9 +1,11 @@
 package item10;
 
 public class PhoneNumber {
-    private final short areaCode, prefix, lineNum;
+    private final int areaCode;
+    private final int prefix;
+    private final int lineNum;
 
-    public PhoneNumber(short areaCode, short prefix, short lineNum) {
+    public PhoneNumber(int areaCode, int prefix, int lineNum) {
         this.areaCode = areaCode;
         this.prefix = prefix;
         this.lineNum = lineNum;

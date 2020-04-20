@@ -536,7 +536,7 @@ Object의 구현해야 하는 메서드를 알아보는 챕터다.
   ```
   - 이 방식은 정수 오버플로를 일으키거나 부동소수점 계산 방시게 따른 오류를 낼 수 있다. 
   - 다음 두 방식 중 하나를 택하자
-  ````
+  ```
   static Comparator<Object> hashCodeOrder = new Comparator<Object>() {
           @Override
           public int compare(Object o1, Object o2) {
@@ -546,4 +546,189 @@ Object의 구현해야 하는 메서드를 알아보는 챕터다.
   
   // 또는
   static Comparator<Object> hashCodeOrder = Comparator.comparingInt(Object::hashCode);
-  ```` 
+  ``` 
+  
+---
+# 클래스와 인터페이스
+## 클래스와 멤버의 접근 권한을 최소화로하라
+- 잘 설계된 컴포넌트는 모든 내부 구현을 완벽히 숨겨, 구현과 API를 깔끔히 분리한다. 
+- 정보은닉의 장점은 다음과 같다.
+  - 시스템 개발 속도를 높인다. 여러 컴포넌트를 병렬로 개발할 수 있기 때문이다.
+  - 시스템 관리 비용을 낮춘다. 
+  - 정보은닉 자체가 성능을 높여주진 않지만, 성능 최적화에 도움을 준다. 
+  - 소프트웨어 재사용성을 높인다. 
+  - 큰 시스템을 제작하는 난의도를 낮춘다. 
+- 자바는 정보 은닉을 위한 다양한 장치를 제공한다. 
+  - 그 중 접근 제어 메커니즘은 클래스, 인터페이스, 멤버의 접근성을 명시한다. 
+  - 각 요소의 접근성은 그 요소가 선언된 위치와 접근 제한자로 정해진다. 
+- 기본 원칙은 모든 클래스와 멤버 접근성을 가능한 한 좁혀야 한다. 
+- 톱레벨 클래스와 인터페이스에 부여할 수 있는 접근 수준은 package-private와 public 두 가지다. 
+- 한 클래스에서만 사용하는 package-private 톱레벨 클래스나 인터페이스는 이를 사용하는 클래스 안에 private static으로 중첩시켜보자.
+  - private static으로 중첩시키면 바깥 클래스 하나에서만 접근할 수 있다. 
+- public일 필요가 없는 클래스의 접근 수준을 package-private 톱레벨 클래스로 좁히는 일이 중요하다. 
+  - public 클래스는 그 패키지의 API인 반면, package-private 톱레벨 클래스는 내부 구현에 속하기 때문이다. 
+- 멤버에 접근할 수 있는 수준은 네 가지다.
+  - private: 멤버를 선언한 톱레벨 클래스에서만 접근할 수 있다. 
+  - package-private: 멤버가 소속된 패키지 안의 모든 클래스에서 접근할 수 있다. 접근 제한자를 명시하지 않았을 때의 접근 수준.
+  - protected: package-private의 접근 범위를 포함하며, 이 멤버를 선언한 클래스의 하위 클래스에서도 접근할 수 있다. 
+  - public: 모든 곳에서 접근가능하다.
+- 클래스의 공개 API를 세심히 서계한 후, 그 외의 모든 멤버는 private로 만들자. 
+  - 그런 다음 오직 같은 패키지의 다른 클래스가 접근해야 하는 멤버에 한해 private 제한자를 package-private로 풀어주자. 
+  - 풀어주는 일이 자주 하게 된다면 시스템에서 컴포넌트를 더 분해해야 하는 것은 아닌지 고민해보자. 
+- protected 멤버는 공개 API이므로 영원히 주원되야 한다. 따라서 protected 멤버의 수는 적을 수록 좋다. 
+- public 클래스의 인스턴스 필드는 되도록 public이 아니어야 한다.
+- 정적 필드도 마찬가지이나 예외로 클래스가 표현하는 추상 개념을 완성하는 데 꼭 필요한 구성요소로써의 상수라면 public static final 필드로 공개해도 좋다. 
+  - public static final이 참조하는 객체는 불변이어야 한다. 
+- 자바 9에서  모듈 시스템이라는 개념이 도입되면서 두 가지 암묵적 접근 수준이 추가됐다.
+  - 모듈은 패키지들의 묶음이다. 
+  - 모듈은 자신에 속하는 패키지 중 공개할 것들을 선언한다. 
+  - protected 혹은 public 멤버라도 해당 패키지를 공개하지 않았담녀 모듈 외부에선 접근할 수 없다. 
+  - 모듈 시스템을 활용하면 클래스를 외부에 공개하지 않으면서 같은 모듈을 이루는 패키지 사이에서 자유롭게 공유할 수 있다. 
+- 꼭 필요한 경우가 아니라면 당분간은 모듈을 사용하지 말자.  
+
+---
+## public 클래스에서는 public 필드가 아닌 접근자 메서드를 사용하라
+- 객체지향에선 필드를 모두 private로 바꾸고 public 접근자(getter)를 추가한다.
+  ```
+  public class Point {
+      private double x;
+      private double y;
+  
+  
+      public Point(double x, double y) {
+          this.x = x;
+          this.y = y;
+      }
+      
+      public double getX() {
+          return x;
+      }
+      
+      public void setX(double x) {
+          this.x = x;
+      }
+      
+      public double getY() {
+          return y;
+      }
+      
+      public void setY(double y) {
+          this.y = y;
+      }
+  } 
+  ```
+- 패키지 바깥에서 접근할 수 있는 클래스라면 접근자를 제공함으로써 클래스 내부 표현 방식을 언제든 바꿀 수 있는 유연성을 얻을 수 있다.
+  - public 클래스가 필드를 공개하면 이를 사용하는 클라이언트가 생겨날 것이므로 내부 표현 방식을 마음대로 바꿀 수 없게 된다. 
+- 하지만 package-private 클래스 혹은 private 중첩 클래스라면 데이터 필드를 노출한다 해도 하등의 문제가 없다. 
+  - 이 방식은 접근자 방식보다 훨씬 깔끔하다.  
+  
+---
+## 변경 가능성을 최소화하라
+- 불변 클래스는 가변 클래스보다 설계하고 구현하고 사용하기 쉬어며, 오류가 생길 여지도 적고 훨씬 안전하다. 
+- 클래스를 불변으로 만들려면 다음 다섯 가지 규칙을 따르면 된다. 
+  - 객체의 생태를 변경하는 메서드를 제공하지 않는다. 
+  - 클래스를 확장할 수 없도록 한다. 
+  - 모든 필드를 final로 선언한다. 
+    - 설계자의 의도를 명확히 드러내는 방법이다. 
+    - 새로 생성된 인스턴스를 동기화 없이 다른 스레드로 건네도 문제없이 동작하게끔 보장하는 데도 필요하다. 
+  - 모든 필드를 private로 선언한다. 
+    - public final로만 선언해도 불변 객체가 되지만, 이렇게 하면 다음 릴리스에서 내부 표현을 바꾸지 못하므로 권하지 않는다. 
+  - 자신 외에는 내부의 가변 컴포넌트에 접근할 수 없도록 한다. 
+    - 클래스에 가변 객체를 참조하는 필드가 하나라도 있다면 클라이언트에서 그 객체의 참조를 얻을 수 없도록 해야 한다. 
+```
+public class Complex {
+    private final double re;
+    private final double im;
+
+
+    public Complex(double re, double im) {
+        this.re = re;
+        this.im = im;
+    }
+
+    public double realPart() {
+        return re;
+    }
+
+    public double imaginaryPart() {
+        return im;
+    }
+
+    public Complex plus(Complex c) {
+        return new Complex(re + c.re, im + c.im);
+    }
+
+    public Complex minus(Complex c) {
+        return new Complex(re - c.re, im - c.im);
+    }
+
+    public Complex times(Complex c) {
+        return new Complex(re * c.re - im * c.im, re * c.im + im * c.re);
+    }
+    
+    public Complex dividedBy(Complex c) {
+        double tmp = c.re * c.re + c.im * c.im;
+        return new Complex((re * c.re + im * c.im) / tmp, (im * c.re - re * c.im) / tmp);
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+        if(this == o)
+            return true;
+        if(!(o instanceof Complex))
+            return false;
+
+        Complex complex = (Complex) o;
+
+        if(Double.compare(complex.re, re) != 0)
+            return false;
+        return Double.compare(complex.im, im) == 0;
+    }
+    
+    @Override
+    public int hashCode() {
+        int result;
+        long temp;
+        temp = Double.doubleToLongBits(re);
+        result = (int) (temp ^ (temp >>> 32));
+        temp = Double.doubleToLongBits(im);
+        result = 31 * result + (int) (temp ^ (temp >>> 32));
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "Complex{" + "re=" + re + ", im=" + im + '}';
+    }
+}  
+```
+- 위 사칙연산 메서드에서는 인스턴스 자신은 수정하지 않고 새로운 Complex 인스턴스를 만들어 반환하고 있다. 
+  - 이처럼 피연산자에 함수를 적용해 그 결과를 반환하지만, 피연산자 자체는 그대로인 프로그래밍 패턴을 함수형 프로그래밍이라 한다. 
+- 함수 이름도 add 같은 동사가 아닌 plus 같은 전치사를 사용한 명명 규칙을 따르면 이 메서드가 객체의 값을 변경하지 않는다는 사실을 강조하는 의도다. 
+- 불변 객체는 생성된 시점의 상태를 파괴될 때까지 그대로 간직한다. 
+- 불변객체는 근본적으로 스레드 안전하여 따로 동기화 할 필요 없다. 
+  - 불변 클래스라면 한번 만든 인스턴스를 최대한 재사용하기를 권한다. 
+  - 가장 쉬운 재활용 방법은 자주 쓰이는 값들을 상수(public static fianl)로 제공하는 것이다. 
+- 불변 클래스는 같은 인스턴스를 중복 생성하지 않게 해주는 정적 팩터리를 제공할 수 있다. 
+  - 새로운 클래스를 설계할 때도 public 생성자 대신 정적 팩터리를 만들어두면, 클라이언트를 수정하지 않고도 필요에 따라 캐시 기능을 나중에 덧붙일 수 있다. 
+- 불변 객체를 공유할 수 있다는건 방어적 복사도 필요 없다는 결론이 나온다. 
+  - 따라서 불변 객체는 clone 메서드나 복사 생성자를 제공하지 않는게 좋다. 
+  - String의 복사생성자는 자바 초창기때 잘못 만들어진 것이므로, 되도록 사용을 하지 말아야 한다. 
+- 불변 객체는 자유롭게 공유할 수 있음은 물론, 불변 객체끼리는 내부 데이터를 공유할 수 있다. 
+- 객체를 만들 때 다른 불변 객체들을 구성요소로 사용하면 이점이 많다. 
+- 불변 객체는 그 자체로 실패 원자성을 제공한다. 
+  - 메서드에서 예외가 발생한 후에도 그 객체는 여전히 유효한 상태여야 한다는 성질이다. 
+- 불변 클래스도 단점이 있다.
+  - 값이 다르면 반드시 독립된 객체로 만들어야 한다는 것이다. 
+- 불변 클래스임을 보장한는 가장쉬운 방법은 final 클래스로 선언하는 것이다. 
+  - 더 유연하게 하려면 모든 생성자를 private 혹은 package-private로 만들고 public 정적 팩터리를 제공하는 방법이다. 
+- 직렬화할 때 추가로 주의할 점이 있다. 
+  - Serialziable을 구현하는 불변 클르새의 내부에 가변 객체를 참조하는 필드가 있다면 readObject나 readResolve 메서드를 반드시 제공하거나, ObjectOutputStream.wirteUnshared와 ObjectInputStream.readUnshared 메서드를 사용해야 한다. 
+- 게터가 있다로 해서 무조건 세터를 만들지는 말자. 
+- 클래스는 꼭 필요한 경우가 아니라면 불변이어야 한다. 
+- 단순한 값 객체는 항상 불변으로 만들자. 
+- 불변으로 만들 수 없는 클래스라도 변경할 수 있는 부분을 최소한으로 줄이자. 
+  - 꼭 변경해야할 필드를 뺀 나머지 모두를 final로 선언하자. 
+  - 다른 합당한 이유가 없다면 모든 필드는 private final 이어야 한다. 
+- 생성자는 불변식 설정이 모두 완료된, 초기화가 완벽히 끝난 상태의 객체를 생성해야 한다. 
+  - 확실한 이유가 없다면 생성자와 정적 팩토리 외에는 그 어떤 초기화 메서드도 public으로 제공해선 안된다.  
