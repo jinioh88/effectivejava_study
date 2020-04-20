@@ -732,3 +732,273 @@ public class Complex {
   - 다른 합당한 이유가 없다면 모든 필드는 private final 이어야 한다. 
 - 생성자는 불변식 설정이 모두 완료된, 초기화가 완벽히 끝난 상태의 객체를 생성해야 한다. 
   - 확실한 이유가 없다면 생성자와 정적 팩토리 외에는 그 어떤 초기화 메서드도 public으로 제공해선 안된다.  
+  
+--- 
+## 상속보다는 컴포지션을 사용하라(다시보기)
+- 일반적인 구체 클래스를 패키지 경계를 넘어, 즉 다른 패키지의 구체 클래스를 상속하는 일은 위험하하다. 
+- 메서드 호출과 달리 상속은 캡슐화를 깨뜨린다. 
+  - 상위 클래스가 어떻게 구현되느냐에 따라 하위 클래스의 동작에 이상이 생길 수 있다. 
+  - 상위 클래스 설계자가 확장을 충분히 고려하고 문서화도 제대로 해두지 않으면 하위 클래스는 상위 클래스의 변화에 발맞춰 수정돼야만 한다. 
+- 기존 클래스를 확장하는 대신, 새루운 클래스를 만들고 private 필드로 기존 클래스의 인스턴스를 참조하게 하면 된다. 
+  - 이런 설계를 컴포지션이라 한다. 
+  - 새 클래스의 인스턴스 메서드들은 기존 클래스의 대응하는 메서드를 호출해 그 결과를 반환한다. 
+  - 이 방식을 전달이라 하며, 새 클래스의 메서드들을 전달 메서드라 부른다. 
+  - 그 결과 새로운 클래스는 기존 클래스의 내부 구현방식의 영향에서 벗어나며, 심지어 기존 클래스에 새로운 메서드가 추가되더라도 전혀 영향받지 않는다. 
+  ```
+  public class InstrumentedSet<E> extends ForwardingSet<E> {
+      private int addCount = 0;
+  
+      public InstrumentedSet(Set<E> s) {
+          super(s);
+      }
+  
+  
+      @Override
+      public boolean add(E e) {
+          addCount++;
+          return super.add(e);
+      }
+  
+  
+      @Override
+      public boolean addAll(Collection<? extends E> c) {
+          addCount++;
+          return super.addAll(c);
+      }
+  
+      public int getAddCount() {
+          return addCount;
+      }
+  }
+  
+  public class ForwardingSet<E> implements Set<E> {
+      private final Set<E> s;
+  
+  
+      public ForwardingSet(Set<E> s) {
+          this.s = s;
+      }
+  
+      public void clear() {
+          s.clear();
+      }
+  
+      public boolean contains(Object o) {
+          return s.contains(o);
+      }
+  
+  
+      @Override
+      public Iterator<E> iterator() {
+          return s.iterator();
+      }
+  
+  
+      public boolean isEmpty() {
+          return s.isEmpty();
+      }
+  
+      public int size() {
+          return s.size();
+      }
+  
+      public boolean add(E e) {
+          return s.add(e);
+      }
+  
+      public boolean remove(Object o) {
+          return s.remove(o);
+      }
+  
+      public boolean containsAll(Collection<?> c) {
+          return s.containsAll(c);
+      }
+  
+      public boolean addAll(Collection<? extends E> c) {
+          return s.addAll(c);
+      }
+  
+      public boolean removeAll(Collection<?> c) {
+          return s.removeAll(c);
+      }
+  
+      public boolean retainAll(Collection<?> c) {
+          return s.retainAll(c);
+      }
+  
+      public Object[] toArray() {
+          return s.toArray();
+      }
+  
+      public <T> T[] toArray(T[] a) {
+          return s.toArray(a);
+      }
+  
+      @Override
+      public boolean equals(Object o) {
+          if(this == o)
+              return true;
+          if(!(o instanceof ForwardingSet))
+              return false;
+  
+          ForwardingSet<?> that = (ForwardingSet<?>) o;
+  
+          return s != null ? s.equals(that.s) : that.s == null;
+      }
+  
+      @Override
+      public String toString() {
+          return "ForwardingSet{" + "s=" + s + '}';
+      }
+  
+      @Override
+      public int hashCode() {
+          return s != null ? s.hashCode() : 0;
+      }
+  }
+  ```
+  - 상속 방식은 구체 클래스 각각을 따로 확장해야 하며, 지원하고 싶은 상위 클래스의 생성자 각각에 대응하는 생성자를 별도로 지정해줘야 한다. 
+  - 하지만 위에서 보인 컴포지션 방식은 한 번만 구현해두면 어떠한 Set 구현체라도 계측할 수 있으며, 기존 생성자들과도 함께 사용할 수 있다. 
+  
+---
+## 상속을 고려해 설계하고 문서화하라. 그러지 않았다면 상속을 금지하라(다시보기)
+- 상속용 클래스는 재정의할 수 있는 메서드들을 내부적으로 어떻게 이용하는지 문서로 남겨야 한다. 
+  - 호출되는 메서드가 재정의 가능 메서드라면 그 사실을 호출하는 메서드의 API 설명에 적시해야 한다.
+  
+---
+## 추상 클래스보다는 인터페이스를 우선하라(다시보기)
+- 자바가 제공하는 다중 구현 메커니즘은 인터페이스와 추상 클래스 두 가지다. 
+- 자바 8부터 인터페이스도 디폴트 메서드를 제공할 수 있게 되어, 이제는 두 메커니즘 모두 인스턴스 메서드를 구현 형태로 제공할 수 있다. 
+- 기존 클래스에도 손쉽게 새로운 인터페이스를 구현해넣을 수 있다. 
+- 인터페이스는 믹스인 정의에 안성맞춤이다. 
+  - 믹스인이란 클래스가 구현할 수 있는 타입으로, 믹스인을 구현한 클래스에 원래의 '주된 타입' 외에도 특정 선택적 행위를 제공한다고 선언하는 효과를 준다.
+  - 이처럼 대상 타입의 주된 기능에 선택적 기능을 '혼합'한다고 해서 믹스인이라 부른다. 
+- 추상 클래스로는 기존 클래스에 덧씌울 수 없기 때문에 믹스인을 정의할 수 없다. 
+- 인터페이스로는 계층구조가 없는 타입 프레임워크를 만들 수 있다.
+
+---
+## 인터페이스는 구현하는 쪽을 생각해 설계하라
+- 디폴트 메서드를 선언하면, 그 인터페이스를 구현한 후 디폴트 메서드를 재정의하지 않은 모든 클래스에서 디폴트 구현이 쓰이게 된다. 
+- 자바는 기존 인터페이스에 메서드를 추가하는 길이 열렸지만 모든 기존 구현체들과 매끄럽게 연동되리라는 보장은 없다. 
+- 디폴트 메서드는 기존 구현체에 런타임 오류를 일으킬 수 있다. 
+- 기존 인터페이스에 디폴트 메서드로 새 메서드를 추가하는 일이 꼭 필요한 경우가 아니라면 피해야 한다. 
+- 반면 새로운 인터페이스를 만드는 경우라면 표준적인 메서드 구현을 제공하는 데 아주 유용한 수단이며, 그 인터페이스를 더 쉽게 궇녀해 활용할 수 잇게 해준다. 
+- 디폴트 메서드는 인터페이스로부터 메서드를 제거하거나 기존 메서드의 시그니처를 수정하는 용도가 아님을 명심해야 한다. 
+
+--- 
+## 인터페이스는 타입을 정의하는 용도로만 사용하라
+- 인터페이스는 자신을 구현한 클래스의 인스턴스를 참조할 수 있는 타입 역할을 한다. 
+  - 즉 클래스가 어떤 인터페이스를 구현한다는 것은 자신의 인스턴스로 무엇을 할 수 있는지를 클라이언트에 얘기해주는 것이다.
+  - 인터페이스는 오직 이 용도로만 사용해야 한다. 
+- 이 지침에 맞지 않은 예로 소위 상수 인터페이스가 있다.
+  ```
+  // 안티패턴
+  public interface PhysicalConstants {
+      static final double AVOGARDOS_NUMBER = 6.022_140_847e23;
+      static final double BOLZMANN_CONSTANT = 1.380_533_32e-23;
+      static final double ELECTRON_MASS = 9.102_292_56e-31;
+  }
+  ```
+  - 클래스 내부에서 사용하는 상수는 외부 인터페이스가 아닌 내부 구현에 해당한다. 
+  - 이는 이 내부 구현을 클래스의 API로 노출하는 행위다. 
+  - final이 아닌 클래스가 상수 인터페이스를 구현한다면 모든 하위 클래스의 이름공간이 그 인터페이스가 정의한 상수들로 오염된다. 
+- 특정 클래스나 인터페이스와 강하게 연관된 상수라면 그 클래스나 인터페이스 자체에 추가해야 한다. 
+- 열거 타입으로 나타내기 적합한 상수라면 열거 타입으로 만들어 공개하면 된다. 
+- 그것도 아니면, 인스턴스화할 수 없는 유틸리티 클래스에 담아 공개하자. 
+  ```
+  public class PhysicalConstants {
+      private PhysicalConstants() {
+      }
+      
+      static final double AVOGARDOS_NUMBER = 6.022_140_847e23;
+      static final double BOLZMANN_CONSTANT = 1.380_533_32e-23;
+      static final double ELECTRON_MASS = 9.102_292_56e-31;
+  }
+  ```
+  
+---
+## 태그 달린 클래스보다는 클래스 계층구조를 활용하라
+- 태그 달린 클래스는 장황하고, 오류를 내기 쉽고, 비효율적이다. 
+  ```
+  public class Figure {
+      enum Shape { RECTANGLE, CIRCLE };
+      
+      // 태그 필드
+      final Shape shape;
+      
+      // RECTANGLE일 때만 쓰임
+      double length;
+      double width;
+      
+      // CIRCLE일 때만 쓰임
+      double radius;
+  
+  
+      public Figure(double radius) {
+          shape = Shape.CIRCLE;
+          this.radius = radius;
+      }
+      
+      public Figure(double length, double width) {
+          shape = Shape.RECTANGLE;
+          this.length = length;
+          this.width = width;
+      }
+      
+      double area() {
+          switch(shape) {
+              case RECTANGLE:
+                  return length * width;
+              case CIRCLE:
+                  return Math.PI * (radius * radius);
+                  default:
+                      throw new AssertionError(shape);
+          }
+      }
+  }
+  ```
+- 자바와 같은 객체지향 언어는 타입 하나로 다양한 의미의 객체를 표현하는 수단을 제공한다.
+  - 바로 클래스 계층구조를 활용한는 서브타이핑이다. 
+- 태그 달린 클래스를 클래스 계층구조로 바꾼느 방법을 알아보자
+  - 먼저 계층구조의 루트가 될 추상 클래스를 정의하고, 태그 값에 따라 동작이 달라지는 메서드들ㅇ르 루트 클래스의 추상 메서드로 선언한다. 
+  - 그런 다음 태그 값에 상관없이 동작이 일정한 메서드들을 루트 클래스에 일반 메서드로 추가한다.
+  - 모든 하위 클래스에서 사용하는 공통 데이터 필드들도 모두 루트 클래스로 올린다. 
+  - 다음으로 루트 클래스를 확장한 구체 클래스를 의미별로 하나씩 정의한다. 
+    - 각 하위 클래스에는 각자의 의미에 해당하는 데이터 필드를 넣는다. 
+  - 그런 다음 루트 클래스가 정의한 추상 메서드를 각자의 의미에 맞게 구현한다. 
+  ```
+  public abstract class Figure {
+      abstract double area();
+  }
+
+  public class Circle extends Figure {
+      final double radius;
+      
+      public Circle(double radius1) {
+          this.radius = radius1;
+      }
+  
+  
+      @Override
+      double area() {
+          return Math.PI * (radius * radius);
+      }
+  }
+  
+  public class Rectangle extends Figure {
+      final double length;
+      final double width;
+      
+      public Rectangle(double length, double width) {
+          this.length = length;
+          this.width = width;
+      }
+  
+  
+      @Override
+      double area() {
+          return length * width;
+      }
+  }
+  ```
+  
