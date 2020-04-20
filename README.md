@@ -371,9 +371,9 @@ public class SpellChecker {
   - firstLineofFile이 함수에선 readLine과 close 호출 양쪽에서 예외가 발생하면, close에서 발생한 예외는 숨겨지고 readLine에서 발생한 예외가 기록된다. 
   - try-with-resources에도 catch 절을 쓸 수 있다. 
 
-</br>
+---
 # 모든 객체의 공통 메서드
-Object의 구현해야 하는 메서드를 알아보는 챕터다.</br>
+Object의 구현해야 하는 메서드를 알아보는 챕터다.
 
 ## equals는 일반 규약을 지켜 재정의하라
 - equals는 다음에 열거한 상황 중 하나에 해당한다면 재정의하지 않는게 최선이다.
@@ -461,10 +461,89 @@ Object의 구현해야 하는 메서드를 알아보는 챕터다.</br>
 - IDE에서 자동완성 toString은 유용하다. 
 
 ---
-## clone 재정의는 주의해서 진행하라 (다시보기) 
+## clone 재정의는 주의해서 진행하라 
 - Cloneable 인터페이스는 Object의 protected 메서드인 clone의 동작 방식을 결정한다. 
   - Cloneable을 구현한 클래스의 인스턴스에서 clone을 호출하면 그 객체의 필드들을 하나하나 복사한 객체를 반환하며, 그렇지 않은 클래스의 인스턴스에서 호출하면 CloneNotSupportedException을 던진다.
+- clone 메서드의 규약은 다음과 같다
+  - x.clone() !- x
+  - x.clone().equals(x) // 필수는 아니다. 
+- 쓸데없는 복사를 지양한다는 관점에서 불변 클래스는 굳이 clone 메서드를 제공하지 않는게 좋다. 
+- (PhoneNumbwer) super.clone() 같이 재정의한 메서드의 반환 타입은 상위 클래스의 메서드가 반환하는 타입의 하위 타입일 수 있다. 
+  - 이 방식으로 클라이언트가 형변환하지 안아도 되게끔 해주자.  
+  - super.clone()으로 호출하고 형변환을 해주는 방식이 좋다.
 - clone 메서드는 사실상 생성자와 같은 효과를 낸다.
-  - clone은 원본 객체에 아무런 해를 끼치지 않는 동시에 복제된 객체의 불변식을 보장해야 한다. 
+  - clone은 원본 객체에 아무런 해를 끼치지 않는 동시에 복제된 객체의 불변식을 보장해야 한다.
 - 배열의 clone은 런타임 타입과 컴파일타임 타입 모두가 원본 배열과 똑같은 배열을 반환한다.
-  - 배열을 족제할 때는 배열의 clone 메서드 사용을 권장한다. 
+  - 배열을 복제할 때는 배열의 clone 메서드 사용을 권장한다. 
+- 복잡한 가변 객체를 복제하는 마지막 방법은 먼저 super.clone을 호출하여 얻은 객체의 모든 필드를 초기 상태로 설정한 다음, 원본 객체의 상태를 다시 생성하는 고수준 메서드들을 호출한다. 
+- 생성자에서는 재정의 될 수 있는 메서드를 호출하지 않아야 하는데, CLONE 메서드도 마찬가지다.
+  - 만약 clone이 하위 클래스에서 재정의한 메서드를 호출하면, 하위 클래스는 복제 과정에서 자신의 상태를 교정할 기회를 잃게 되어 원본과 복제본의 상태가 달라질 가능성이 크다.
+  - public인 clone 메서드에서는 throws 절을 없애야 메서드를 사용하기 편해진다.
+- 상속용 클래스는 Cloneable을 구현해선 안된다. 
+- Cloneable을 구현한 스레드 안전 클래스를 작성할 때 clone 메서드 역시 적절히 동기화 해줘야 한다. 
+  - Object의 clone은 동기화를 신경쓰지 않는다. 
+- 요약하면, Cloneable을 구현한 모든 클래스는 clone을 재정의해야 한다. 
+  - 접근 제한자는 public으로, 반환 타입은 클래스 자신으로 변경한다. 
+  - 가장먼저 super.clone을 호출한 후 필요한 필드 전부를 적절히 수정한다. 
+  - 기본 타입 필드와 불변 객체 참조만 갖는 클래스라면 아무 필드도 수정할 필요가 없다. 단 일련 번호나 고유 ID는 비록 기본 타입이나 불변일지라도 수정해줘야한다. 
+- Cloneable을 이미 구현한 클래스를 확장한다면 어쩔수 없이 clone을 잘 작동하도록 구현해야 한다. 
+  - 그렇지 않은 상황에서는 복사 생성자와 복사 팩터리라는 더 나은 객체 복사 방식을 제공할 수 있다. 
+  - 이는 Cloneable/clone 방식보다 나은 면이 많다.  
+- 복사 생성자와 복사 팩터리는 해당 클래스가 구현한 '인터페이스'타입의 인스턴스를 인수로 받을 수 있다. 
+  - 인터페이스 기반 복사 생성자와 복사 팩터리의 더 정확한 이름은 '변환 생성자', '변환 팩터리'다
+  - 이를 이용하면 클라이언트는 원본의 구현 타입에 얽매이지 않고 복제본의 타입을 직접 선택할 수 있다. 
+  - HashSet의 객체 s를 TreeSet 타입으로 복제하려면 new TreeSet<>(s)만 하면 끝난다. 
+- 복제 기능은 생성자와 팩터리를 이용하는게 최고다. 단 배열만은 clone 메서드를 사용하자. 
+  
+---
+## Comparable을 구현할지 고려하라
+- compareTo는 단순 동치성 비교에 더해 순서까지 비교할 수 있으며, 제네릭하다. 
+- Comparable을 구현했다는 것은 그 클래스의 인스턴스들에는 자연적인 순서가 있음을 뜻한다. 
+  - Comparable을 구현한 객체들은 배열처럼 손쉽게 정렬할 수 있다.
+  - 검색, 극단값 계산, 자동 정렬되는 컬렉션 관리도 쉽게 할 수 있다. 
+- 알파벳, 숫자, 연대 같이 순서가 명확한 값 클래스를 작성한다면 반드시 Comparable 인터페이스를 구현하자. 
+- compareTo 메서드의 일반 규약은 equals의 규약과 비슷하다. 
+  - 이 객체와 주어진 객체의 순서를 비교한다. 
+  - 주어진 객체보다 작으면 음의 정수, 같으면 0, 크면 양의 정수를 반환한다. 
+  - 비교할 수 없으면 ClassCastException을 던진다. 
+  - 다음은 권고는 아니지만 꼭 지키는게 좋다. (X.compareTo(y)) == 0) == (x.equals(y))
+  - 모든 객체에 대해 전역 동치관계를 부여하는 equals와는 달리, compareTo 타입이 다른 객체를 신경 쓰지 않아도 된다. 
+    - 타입이 다르면 ClassCastException을 던지면 된다. 
+  - compareTo 규약을 지키지 못하면 비교를 활용하는 클래스와 어울리지 못한다. 
+- 즉 반사성, 대칭성, 추이성을 충족해야 한다.
+  - 기존 클래스를 확장한 구체 클래스에서 새로운 값 컴포넌트를 추가했다면 compareTo 규약을 지킬 방법이 없다. 
+  - Comparable을 구현한 클래스를 확장해 값 컴포넌트를 추가하고 싶다면, 확장하는 대신 독립된 클래스를 만들고, 이 클래스에 원래 클래스의 인스턴스를 가리키는 필드를 두자. 
+  - 그런 다음 내부 인스턴스를 반환하는 '뷰' 메서드를 제공하면 된다.  
+- compareTo 메서드 작성 요령은 equals와 비슷하다.
+  - Comparable은 타입을 인수로 받는 제네릭 인터페이스므로 compareTo 메서드의 인수 타입은 컴파일타임에 정해진다. 
+- compareTo 메서드는 각 필드가 동치인지를 비교하는 게 아니라 그 순서를 비교한다. 
+  - Comparable을 구현하지 않은 필드나 표준이 아닌 순서로 비교해야 한다면 Comparator를 대신 사용한다. 
+- compareTo 메서드에서 필드의 값을 비교할 때 <와 > 션산자는 쓰지말자. 구닥다리 방식이다. 
+- 클래스 핵심 필드가 여러개라면 가장 핵심 필드부터 배교해나가자. 
+- 자바 8에서는 Comparator 인터페이스가 일련의 비교자 생성 메서드와 팀을 꾸려 메서드 연쇄 방식으로 비교자를 생성할 수 있게 되었다. 
+  ```
+  private static final Comparator<PhoneNumber> COMPARATOR = Comparator.comparingInt((PhoneNumber pn) -> pn.areaCode).thenComparingInt(pn -> pn.prefix);
+  ```
+- 객체 참조용 비교자 생성메서드 comparing도 준비돼 있다.
+- 이따금 값의 차로 비교하는 부분이 있는데 다음처럼 하면 안된다.
+  ``` 
+  static Comparator<Object> hashCodeOrder = new Comparator<Object>() {
+          @Override
+          public int compare(Object o1, Object o2) {
+              return o1.hashCode() - o2.hashCode();
+          }
+  };
+  ```
+  - 이 방식은 정수 오버플로를 일으키거나 부동소수점 계산 방시게 따른 오류를 낼 수 있다. 
+  - 다음 두 방식 중 하나를 택하자
+  ````
+  static Comparator<Object> hashCodeOrder = new Comparator<Object>() {
+          @Override
+          public int compare(Object o1, Object o2) {
+              return Integer.compare(o1.hashCode(), o2.hashCode());
+          }
+  };
+  
+  // 또는
+  static Comparator<Object> hashCodeOrder = Comparator.comparingInt(Object::hashCode);
+  ```` 
