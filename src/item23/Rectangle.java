@@ -1,5 +1,8 @@
 package item23;
 
+import java.util.Arrays;
+import java.util.Collections;
+
 public class Rectangle extends Figure {
     final double length;
     final double width;
@@ -14,4 +17,5 @@ public class Rectangle extends Figure {
     double area() {
         return length * width;
     }
+
 }

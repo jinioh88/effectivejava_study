@@ -577,8 +577,26 @@ Object의 구현해야 하는 메서드를 알아보는 챕터다.
   - 풀어주는 일이 자주 하게 된다면 시스템에서 컴포넌트를 더 분해해야 하는 것은 아닌지 고민해보자. 
 - protected 멤버는 공개 API이므로 영원히 주원되야 한다. 따라서 protected 멤버의 수는 적을 수록 좋다. 
 - public 클래스의 인스턴스 필드는 되도록 public이 아니어야 한다.
+  - 필드가 가변 객체를 참조하거나, final이 아닌 인스턴스 필드를 public으로 선언하면 그 필드에 담을 수 있는 값을 제한할 힘을 잃게 된다. 
+  - public 가변 필드를 갖는 클래스는 일반적으로 스레드에 안전하지 않다. 
 - 정적 필드도 마찬가지이나 예외로 클래스가 표현하는 추상 개념을 완성하는 데 꼭 필요한 구성요소로써의 상수라면 public static final 필드로 공개해도 좋다. 
   - public static final이 참조하는 객체는 불변이어야 한다. 
+- 길이가 0이 아닌 배열은 모두 변경가능 하니 주의하자
+  - 따라서 클래스에서 public static final 배열 필드를 두거나 이 필드를 반환하는 접근자 메서드를 제공해선 안된다. 
+  - 접근자를 두게 되면 클라이언트에서 그 배열의 내용을 수정할 수 있게 된다. 
+  - 해결책은 2가지다
+  - 첫째, public 배열을 private로 만들고 public 불변 리스트를 추가하는 것이다.
+    ```
+    private static final Thing[] PRIVATE_VALUES = {...};
+    public static final List<Thing> VALUES = Collections.unmodifiableList(Arrays.asList(PRIVATE_VALUES));
+    ```
+  - 두번째, 배열을 private로 만들고 그 복사본을 반환하는 public 메서드를 추가하는 방법이다(방어적 복사).
+    ```
+    private static final Thing[] PRIVATE_VALUES = {...};
+    public static final Thin[] values() {
+        return PRIVATE_VALUES.clone();
+    }
+    ```
 - 자바 9에서  모듈 시스템이라는 개념이 도입되면서 두 가지 암묵적 접근 수준이 추가됐다.
   - 모듈은 패키지들의 묶음이다. 
   - 모듈은 자신에 속하는 패키지 중 공개할 것들을 선언한다. 
