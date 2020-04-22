@@ -1145,4 +1145,65 @@ public class Complex {
   - 위 처럼 변수를 하나 선언해주고 그 변수에 달아주자. 
 - @SuppressWarnings ("unchecked") 애너테이션을 사용할 때면 그 경고를 무시해도 안전한 이유를 항상 주석으로 남기자. 
 
+---
+## 배열보다는 리스트를 사용하라
+- 배열은 공변이고 제네릭은 불공변이다. 
+- 호환되지 않는 데이터를 넣으려 할때 배열은 그 실수를 런타임에야 알게 되지만, 리스트를 사용하면 컴파일할 때 바로 알 수 있다. 
+  - 컴파일시 알아채는게 더 좋을것이다.
+- 배열은 실체화 된다. 
+  - 배열은 런터임에도 자신이 담기로 한 원소의 타입을 인지하고 확인한다. 
+- 제네릭은 타입 정보가 런타임에는 소거된다. 
+  - 원소 타입을 컴파일타임에만 검사하며 런타임에는 알수조차 없다는 뜻이다. 
+- 제네릭 배열을 만들지 못하게 막은 이유는 타입 안전하지 않기 때문이다. 
+  ```
+  public class Chooser {
+      private final Object[] choiceArray;
+  
+  
+      public Chooser(Collection choices) {
+          this.choiceArray = choices.toArray();
+      }
+      
+      public Object choose() {
+          Random rnd = ThreadLocalRandom.current();
+          return choiceArray[rnd.nextInt(choiceArray.length)];
+      }
+  }
+  ```
+  - 위 코드의 문제는 choose 메서드를 호출할 때마다 반환된 Object를 원하는 타입으로 형변환해야 한다. 
+  - 혹시나 타입이 다른 원소가 들어 있다면 런타임에 형변환 오류가 날 것이다.
+  - 위를 제네릭으로 만들어야 한다. 
+  ```
+  public class Chooser<T> {
+      private final T[] choiceArray;
+  
+  
+      public Chooser(Collection<T> choices) {
+          this.choiceArray = (T[]) choices.toArray();
+      }
+  
+      public Object choose() {
+          Random rnd = ThreadLocalRandom.current();
+          return choiceArray[rnd.nextInt(choiceArray.length)];
+      }
+  }
+  ```
+  - 제네릭에서는 원소의 타입 정보가 소거되어 런타임에는 무슨 타입인지 알 수 없다. 
+  - 위 코드는 비검사 형변환 경고메세지가 나오는데, 배열 대신 리스트를 쓰면 된다. 
+  ```
+  public class Chooser<T> {
+      private final List<T> choiceList;
+  
+  
+      public Chooser(Collection<T> choices) {
+          this.choiceList = new ArrayList<>(choices);
+      }
+  
+      public Object choose() {
+          Random rnd = ThreadLocalRandom.current();
+          return choiceList.get(rnd.nextInt(choiceList.size()));
+      }
+  }
+  ```
+
   
