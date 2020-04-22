@@ -1103,6 +1103,46 @@ public class Complex {
     ``` 
     
 --- 
-
+## 비검사 경고를 제거하라
+- 제네릭이 익숙지 않다면 수많은 컴파일러 경고를 보게 될 것이다. 
+- 컴파일러가 알려준데로 수정하면 경고가 사라지지만, 자바 7부터 지원하는 다이아몬드 연산자만으로 해결할 수 잇다. 
+  - 그러면 컴파일러가 올바른 실제 타입 매개변수를 추론해준다.
+  ```
+  Set<Lark> ex = new HashSet();  // 컴파일러가 잘못된 점을 지적해주는 코드
+  Set<Lark> exalation = new HashSet<>();  // 다이아몬드 연산자 사용
+  ```
+- 할 수 있는 한 모든 비검사 경고를 제거하라. 그 코드의 타입 안전성이 보장된다. 
+- 경고를 제거할 수는 없지만 타입 안전하다고 확신할 수 있으면 @SuppressWarnings("unchecked") 애너테이션을 달아 경고를 숨기자.
+  - 위 애너테이션은 개별 지역변수 선언부터 클래스 전체가지 달수 있지만 가능항 한 좁은 범위에 달자. 
+  - 보통은 변수 선언, 아주 짧은 메서드, 혹은 생성자가 될 것이다. 
+- 한 줄이 넘는 메서드나 생성자에 달린 @SuppressWarnings 애너테이션을 발견하면 지역변수 선언 쪽으로 옮기자. 
+  ```
+  public <T> T[] toArray(T[] a) {
+          if(a.length < size) 
+              return (T[]) Arrays.copyOf(elements, size, a.getClass());
+          System.arraycopy(elements, 0, a, 0, size);
+          if(a.length > size) 
+              a[size] = null;
+          
+          return a;
+  }
+  ```
+  - 위 를 컴파일하면 경고가 발생한다.
+  - return 문에 @SuppressWarnings를 다는게 불가능해 메서드 젠체에 달고 싶지만 범위가 필요이상으로 넓어지니 자제하자.
+  ```
+  public <T> T[] toArray(T[] a) {
+            if(a.length < size) {
+                @SuppressWarnings ("unchecked") T[] result = (T[]) Arrays.copyOf(elements, size, a.getClass());
+                return result;
+            } 
+            System.arraycopy(elements, 0, a, 0, size);
+            if(a.length > size) 
+                a[size] = null;
+            
+            return a;
+  }
+  ```
+  - 위 처럼 변수를 하나 선언해주고 그 변수에 달아주자. 
+- @SuppressWarnings ("unchecked") 애너테이션을 사용할 때면 그 경고를 무시해도 안전한 이유를 항상 주석으로 남기자. 
 
   
